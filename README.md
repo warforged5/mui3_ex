@@ -17,7 +17,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  material3_expressive: ^0.1.0
+  mui3_ex: ^0.1.0
 ```
 
 ## Usage
