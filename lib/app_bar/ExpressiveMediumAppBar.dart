@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../motion/expressive_motion.dart';
 class ExpressiveMediumAppBar extends StatelessWidget implements PreferredSizeWidget {
   const ExpressiveMediumAppBar({
     Key? key,
@@ -41,7 +41,6 @@ class ExpressiveMediumAppBar extends StatelessWidget implements PreferredSizeWid
     
     return SliverAppBar(
       leading: leading,
-      title: null, // We'll handle title positioning manually
       actions: actions,
       backgroundColor: backgroundColor ?? colorScheme.surface,
       foregroundColor: foregroundColor ?? colorScheme.onSurface,
@@ -54,146 +53,77 @@ class ExpressiveMediumAppBar extends StatelessWidget implements PreferredSizeWid
       expandedHeight: expandedHeight,
       floating: false,
       pinned: true,
-      flexibleSpace: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final settings = context.dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
-          final deltaExtent = settings?.maxExtent != null && settings?.minExtent != null
-              ? settings!.maxExtent - settings.minExtent
-              : 0.0;
-          final t = settings?.currentExtent != null && deltaExtent > 0
-              ? (1.0 - (settings!.currentExtent - settings.minExtent) / deltaExtent).clamp(0.0, 1.0)
-              : 0.0;
-
-          return _buildFlexibleContent(context, theme, colorScheme, t);
-        },
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: EdgeInsets.only(
+          left: leading != null ? 72.0 : 16.0,
+          right: actions != null ? 16.0 : 16.0,
+          bottom: 16.0,
+        ),
+        title: _buildFlexibleTitle(theme, colorScheme),
+        collapseMode: CollapseMode.pin,
       ),
     );
   }
 
-  Widget _buildFlexibleContent(BuildContext context, ThemeData theme, ColorScheme colorScheme, double t) {
-    // Smooth animation curves for buttery feel
-    final expandedTitleOpacity = Curves.easeInOutCubicEmphasized.transform(1.0 - t);
-    final collapsedTitleOpacity = Curves.easeInOutCubicEmphasized.transform(t);
-    final titleScale = Tween(begin: 1.0, end: 0.85).transform(Curves.easeOutCubic.transform(t));
-    final titleOffset = Tween(begin: 0.0, end: -8.0).transform(Curves.easeOutQuart.transform(t));
-    final subtitleOpacity = Curves.easeOutQuart.transform(1.0 - (t * 1.5).clamp(0.0, 1.0));
+  Widget _buildFlexibleTitle(ThemeData theme, ColorScheme colorScheme) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Calculate collapse ratio based on available height
+        final settings = context.dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
+        final collapseRatio = settings?.currentExtent != null && settings?.maxExtent != null
+          ? 1 - (settings!.currentExtent - settings.minExtent) / (settings.maxExtent - settings.minExtent)
+          : 0.0;
 
-    // Font size interpolation with smooth curves
-    final titleFontSize = Tween(begin: 28.0, end: 22.0).transform(Curves.easeInOutCubicEmphasized.transform(t));
+        // Interpolate font sizes based on collapse ratio
+        final titleFontSize = Tween(begin: 28.0, end: 22.0).transform(collapseRatio.clamp(0.0, 1.0));
+        final subtitleOpacity = Tween(begin: 1.0, end: 0.0).transform(collapseRatio.clamp(0.0, 1.0));
 
-    final expandedTitleStyle = theme.textTheme.headlineMedium?.copyWith(
-      fontWeight: FontWeight.w600,
-      fontSize: titleFontSize,
-      letterSpacing: -0.25,
-      height: 1.2,
-      color: foregroundColor ?? colorScheme.onSurface,
-    );
+        final titleStyle = theme.textTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: titleFontSize,
+          letterSpacing: -0.25,
+          height: 1.2,
+          color: foregroundColor ?? colorScheme.onSurface,
+        );
 
-    final collapsedTitleStyle = theme.textTheme.headlineSmall?.copyWith(
-      fontWeight: FontWeight.w600,
-      fontSize: 22.0,
-      letterSpacing: 0,
-      height: 1.2,
-      color: foregroundColor ?? colorScheme.onSurface,
-    );
+        final subtitleStyle = theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w400,
+          fontSize: 14.0,
+          letterSpacing: 0.25,
+          height: 1.4,
+          color: (foregroundColor ?? colorScheme.onSurface).withOpacity(0.7),
+        );
 
-    final subtitleStyle = theme.textTheme.bodyMedium?.copyWith(
-      fontWeight: FontWeight.w400,
-      fontSize: 14.0,
-      letterSpacing: 0.25,
-      height: 1.4,
-      color: (foregroundColor ?? colorScheme.onSurface).withOpacity(0.7),
-    );
+        if (subtitle == null) {
+          return Align(
+            alignment: titleHorizontalAlignment == TextAlign.center 
+              ? Alignment.center 
+              : Alignment.centerLeft,
+            child: Text(title, style: titleStyle),
+          );
+        }
 
-    return Stack(
-      children: [
-        // Collapsed title in toolbar area (when t > 0.5)
-        if (t > 0.3)
-          Positioned(
-            left: leading != null ? 72.0 : 16.0,
-            right: actions != null && actions!.isNotEmpty ? 72.0 : 16.0,
-            top: 0,
-            bottom: 0,
-            child: Opacity(
-              opacity: collapsedTitleOpacity,
-              child: Center(
-                child: Align(
-                  alignment: titleHorizontalAlignment == TextAlign.center 
-                      ? Alignment.center 
-                      : Alignment.centerLeft,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: titleHorizontalAlignment == TextAlign.center 
-                        ? CrossAxisAlignment.center 
-                        : CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: collapsedTitleStyle,
-                        textAlign: titleHorizontalAlignment,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (subtitle != null && t < 0.7) // Show subtitle when not fully collapsed
-                        Text(
-                          subtitle!,
-                          style: subtitleStyle,
-                          textAlign: titleHorizontalAlignment,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
-                ),
+        return Align(
+          alignment: titleHorizontalAlignment == TextAlign.center 
+            ? Alignment.center 
+            : Alignment.centerLeft,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: titleHorizontalAlignment == TextAlign.center 
+              ? CrossAxisAlignment.center 
+              : CrossAxisAlignment.start,
+            children: [
+              Text(title, style: titleStyle),
+              AnimatedOpacity(
+                opacity: subtitleOpacity,
+                duration: ExpressiveMotion.defaultEffects,
+                curve: ExpressiveMotion.effectsSpring,
+                child: Text(subtitle!, style: subtitleStyle),
               ),
-            ),
+            ],
           ),
-        
-        // Expanded title below the toolbar area (when t < 0.7)
-        if (t < 0.7)
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 16,
-            child: Transform.translate(
-              offset: Offset(0, titleOffset),
-              child: Transform.scale(
-                scale: titleScale,
-                alignment: titleHorizontalAlignment == TextAlign.center 
-                    ? Alignment.center 
-                    : Alignment.centerLeft,
-                child: Opacity(
-                  opacity: expandedTitleOpacity,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: titleHorizontalAlignment == TextAlign.center 
-                        ? CrossAxisAlignment.center 
-                        : CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: expandedTitleStyle,
-                        textAlign: titleHorizontalAlignment,
-                      ),
-                      if (subtitle != null)
-                        Opacity(
-                          opacity: subtitleOpacity,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 4.0),
-                            child: Text(
-                              subtitle!,
-                              style: subtitleStyle,
-                              textAlign: titleHorizontalAlignment,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
+        );
+      },
     );
   }
 
