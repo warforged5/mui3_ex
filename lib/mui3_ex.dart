@@ -5,7 +5,7 @@ export 'app_bar/expressivesearchappbar.dart';
 export 'app_bar/expressivesmallappbar.dart';
 export 'app_bar/expressivemediumappbar.dart';
 export 'app_bar/expressivelargeappbar.dart';
-export 'app_bar/expressivetworowsappbar.dart';
+export 'app_bar/ExpressiveTwoRowsAppBar.dart';
 export 'app_bar/expressiveappbarmotion.dart';
 export 'app_bar/expressiveappbardefaults.dart';
 

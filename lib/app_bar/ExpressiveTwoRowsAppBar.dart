@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class ExpressiveSmallAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const ExpressiveSmallAppBar({
+class ExpressiveTwoRowsAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const ExpressiveTwoRowsAppBar({
     Key? key,
     required this.title,
     this.subtitle,
@@ -15,9 +15,10 @@ class ExpressiveSmallAppBar extends StatelessWidget implements PreferredSizeWidg
     this.shape,
     this.titleHorizontalAlignment = TextAlign.start,
     this.titleSpacing,
-    this.toolbarOpacity = 1.0,
-    this.bottomOpacity = 1.0,
     this.collapsedHeight = 64.0,
+    this.expandedHeight = 112.0,
+    this.expandedTitleBuilder,
+    this.collapsedTitleBuilder,
   }) : super(key: key);
 
   final String title;
@@ -32,17 +33,17 @@ class ExpressiveSmallAppBar extends StatelessWidget implements PreferredSizeWidg
   final ShapeBorder? shape;
   final TextAlign titleHorizontalAlignment;
   final double? titleSpacing;
-  final double toolbarOpacity;
-  final double bottomOpacity;
   final double collapsedHeight;
+  final double expandedHeight;
+  final Widget Function(String title, String? subtitle, bool expanded)? expandedTitleBuilder;
+  final Widget Function(String title, String? subtitle, bool expanded)? collapsedTitleBuilder;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     
-    return AppBar(
-      title: _buildTitle(theme, colorScheme),
+    return SliverAppBar(
       leading: leading,
       actions: actions,
       backgroundColor: backgroundColor ?? colorScheme.surface,
@@ -51,19 +52,50 @@ class ExpressiveSmallAppBar extends StatelessWidget implements PreferredSizeWidg
       surfaceTintColor: surfaceTintColor,
       shadowColor: shadowColor,
       shape: shape,
-      centerTitle: titleHorizontalAlignment == TextAlign.center,
-      titleSpacing: titleSpacing ?? (leading != null ? 0 : 16),
-      toolbarOpacity: toolbarOpacity,
-      bottomOpacity: bottomOpacity,
-      toolbarHeight: collapsedHeight,
+      titleSpacing: titleSpacing,
+      collapsedHeight: collapsedHeight,
+      expandedHeight: expandedHeight,
+      floating: false,
+      pinned: true,
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: EdgeInsets.only(
+          left: leading != null ? 72.0 : 16.0,
+          right: actions != null ? 16.0 : 16.0,
+          bottom: 16.0,
+        ),
+        title: _buildCustomTitle(theme, colorScheme),
+        collapseMode: CollapseMode.pin,
+      ),
     );
   }
 
-  Widget _buildTitle(ThemeData theme, ColorScheme colorScheme) {
-    final titleStyle = theme.textTheme.headlineSmall?.copyWith(
-      fontWeight: FontWeight.w600,
-      fontSize: 22.0,
-      letterSpacing: 0,
+  Widget _buildCustomTitle(ThemeData theme, ColorScheme colorScheme) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final settings = context.dependOnInheritedWidgetOfExactType<FlexibleSpaceBarSettings>();
+        final collapseRatio = settings?.currentExtent != null && settings?.maxExtent != null
+          ? 1 - (settings!.currentExtent - settings.minExtent) / (settings.maxExtent - settings.minExtent)
+          : 0.0;
+
+        final isExpanded = collapseRatio < 0.5;
+
+        if (isExpanded && expandedTitleBuilder != null) {
+          return expandedTitleBuilder!(title, subtitle, true);
+        } else if (!isExpanded && collapsedTitleBuilder != null) {
+          return collapsedTitleBuilder!(title, subtitle, false);
+        }
+
+        // Default implementation
+        return _buildDefaultTitle(theme, colorScheme, isExpanded);
+      },
+    );
+  }
+
+  Widget _buildDefaultTitle(ThemeData theme, ColorScheme colorScheme, bool isExpanded) {
+    final titleStyle = theme.textTheme.headlineMedium?.copyWith(
+      fontWeight: isExpanded ? FontWeight.w600 : FontWeight.w500,
+      fontSize: isExpanded ? 28.0 : 22.0,
+      letterSpacing: isExpanded ? -0.25 : 0,
       height: 1.2,
       color: foregroundColor ?? colorScheme.onSurface,
     );
@@ -96,12 +128,12 @@ class ExpressiveSmallAppBar extends StatelessWidget implements PreferredSizeWidg
           : CrossAxisAlignment.start,
         children: [
           Text(title, style: titleStyle),
-          Text(subtitle!, style: subtitleStyle),
+          if (isExpanded) Text(subtitle!, style: subtitleStyle),
         ],
       ),
     );
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(collapsedHeight);
+  Size get preferredSize => Size.fromHeight(expandedHeight);
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+
 /// Button Group Size enumeration
 enum ButtonGroupSize {
   extraSmall,
@@ -34,7 +35,8 @@ class ExpressiveButtonGroup extends StatefulWidget {
     this.overflow,
   }) : super(key: key);
 
-  final Widget Function(ButtonGroupScope scope) builder;
+  // Fix: Change to void function instead of Widget Function
+  final void Function(ButtonGroupScope scope) builder;
   final double expandedRatio;
   final MainAxisAlignment horizontalArrangement;
   final double spacing;
@@ -65,12 +67,13 @@ class _ExpressiveButtonGroupState extends State<ExpressiveButtonGroup>
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final items = <ButtonGroupItem>[];
-        
-        // Build items using the scope
-        widget.builder(_scope);
-        items.addAll(_scope._items);
+        // Clear previous items
         _scope._clearItems();
+        
+        // Build items using the scope (no return value needed)
+        widget.builder(_scope);
+        
+        final items = List<ButtonGroupItem>.from(_scope._items);
 
         if (items.isEmpty) {
           return const SizedBox.shrink();
